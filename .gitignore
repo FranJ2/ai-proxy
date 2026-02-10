@@ -6,6 +6,7 @@ dist/
 cert.pem
 key.pem
 certificate.pfx
+cert.crt
 
 .http
 config.json

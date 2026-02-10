@@ -9,8 +9,10 @@ import cert.linux
 PORT = 443
 
 if __name__ == "__main__":
-    generate_cert(config.config.hosts())
-    install_certificate_auto('cert.pem')
+    cert_info = generate_cert(config.config.hosts())
+    cert_path = cert_info.get('cert') if cert_info else 'cert.pem'
+    key_path = cert_info.get('key') if cert_info else 'key.pem'
+    install_certificate_auto(cert_path)
     plat = detect_platform()
     if plat == Platform.WINDOWS:
         configure_hosts(config.config.hosts(), cert.windows.DEFAULT_HOSTS_PATH)
@@ -19,4 +21,4 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"unsupported platform: {plat}")
 
-    server.start(PORT, ProxyHandler)
+    server.start(PORT, ProxyHandler, certfile=cert_path, keyfile=key_path)
