@@ -44,6 +44,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
+        shell: bash
         run: |
           python -m PyInstaller --clean --distpath dist --workpath build ai-proxy.spec
           echo "=== dist contents ==="
