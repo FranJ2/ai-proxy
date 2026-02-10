@@ -7,9 +7,11 @@ block_cipher = None
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
-    datas=[('default.json', '.')],
+    datas=[
+        ('default.json', '.'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
