@@ -40,33 +40,54 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -c "import os; os.path.exists('requirements.txt') and __import__('subprocess').run(['pip', 'install', '-r', 'requirements.txt'], check=True)"
           pip install pyinstaller
 
       - name: Build with PyInstaller
         run: |
           pyinstaller --clean ai-proxy.spec
+        continue-on-error: false
 
       - name: Prepare artifact
         id: prepare_artifact
         run: |
           python - <<'PY'
-          import os, shutil, sys
-          tag = os.environ.get('TAG') or os.environ.get('GITHUB_REF_NAME') or os.environ.get('GITHUB_RUN_NUMBER') or 'run'
-          name = os.environ.get('MATRIX_NAME') or 'unknown'
-          art = f"ai-proxy-{tag}-{name}.zip"
+          import os, shutil, sys, re
+
+          # Determine tag name
+          tag = os.environ.get('TAG', 'unknown')
+          name = os.environ.get('MATRIX_NAME', 'unknown')
+
+          # Validate tag format
+          if not re.match(r'^v?\d+\.\d+\.\d+', tag) and tag not in ('unknown',):
+              print(f"Warning: Tag '{tag}' doesn't match semantic versioning")
+
+          artifact = f"ai-proxy-{tag}-{name}.zip"
           src = None
-          if os.path.isdir('dist'):
-              src = 'dist'
-          elif os.path.isdir('build'):
-              src = 'build'
-          else:
-              print('No dist or build folder found', file=sys.stderr)
+
+          # Find source directory
+          for directory in ['dist', 'build']:
+              if os.path.isdir(directory):
+                  src = directory
+                  break
+
+          if not src:
+              print('Error: No dist or build folder found', file=sys.stderr)
               sys.exit(1)
-          shutil.make_archive(art.replace('.zip',''), 'zip', src)
-          print('artifact='+art)
-          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
-              f.write(f"artifact={art}\n")
+
+          # Create archive
+          base_name = artifact.replace('.zip', '')
+          shutil.make_archive(base_name, 'zip', src)
+
+          if not os.path.exists(artifact):
+              print(f'Error: Failed to create artifact {artifact}', file=sys.stderr)
+              sys.exit(1)
+
+          print(f"✓ Created artifact: {artifact}")
+
+          # Write to GitHub output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"artifact={artifact}\n")
           PY
         env:
           TAG: ${{ github.ref_name || github.event.inputs.tag || github.run_number }}
@@ -81,32 +102,30 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name || github.event.inputs.tag }}
-          release_name: Release ${{ github.ref_name || github.event.inputs.tag }}
-          body: Automated release created by workflow
+          name: Release ${{ github.ref_name || github.event.inputs.tag }}
+          files: artifacts/**/*
           draft: false
           prerelease: false
+          body: |
+            Automated release created by GitHub Actions workflow
+
+            ## Build Info
+            - Build Date: ${{ github.event.head_commit.timestamp || 'N/A' }}
+            - Commit: ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install GitHub CLI
-        uses: cli/gh-action@v2
-
-      - name: Upload artifacts to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name || github.event.inputs.tag }}
-        run: |
-          echo "$GITHUB_TOKEN" | gh auth login --with-token
-          ls -la artifacts
-          gh release upload "$TAG" artifacts/* --clobber
