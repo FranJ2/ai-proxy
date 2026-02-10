@@ -10,3 +10,4 @@ cert.crt
 
 .http
 config.json
+config.lock

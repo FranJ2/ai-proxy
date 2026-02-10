@@ -43,7 +43,7 @@ def handle(json_data : Dict[str,Any], request: http.server.BaseHTTPRequestHandle
     try:
         # The SDK may return an iterable streaming response. Handle several possible chunk types.
         for chunk in response:
-            chunk_dict = chunk.to_dict()
+            chunk_dict = chunk.to_dict() # type: ignore
             data_str = json.dumps(chunk_dict)
 
             # Send as Server-Sent Events `data: <json>\n\n` so clients can stream-parse easily.

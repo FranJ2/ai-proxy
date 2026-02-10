@@ -1,12 +1,21 @@
+import hashlib
 import json
 import sys
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
+def calculate_md5(path: str) -> str:
+    """计算文件的MD5值"""
+    with open(path, 'rb') as f:
+        content = f.read()
+
+    return hashlib.md5(content).hexdigest()
 
 class Config:
-    def __init__(self, file: Optional[str] = None) -> None:
+    def __init__(self, file: Optional[str] = None, lock_file: str = "config.lock") -> None:
         self._config_data : Dict[str,Any] = {}
+        self._config_file = file
+
         if file:
             if Path(file).exists():
                 self._load_config(file)
@@ -16,6 +25,15 @@ class Config:
                     json.dump(self._config_data, f, ensure_ascii=False, indent=2)
         else:
             self._load_default_config()
+
+        self._lock_file = lock_file
+
+        if Path(lock_file).exists():
+            self._last_md5 = Path(lock_file).read_text(encoding='utf-8')
+        else:
+            self._last_md5 = ""
+            if file:
+                Path(lock_file).write_text(calculate_md5(file), encoding='utf-8')
 
     @staticmethod
     def _get_resource_path(filename: str) -> Path:
@@ -68,5 +86,20 @@ class Config:
     
     def hosts(self) -> List[str]:
         return self.get("proxy", {}).get("hosts", [])
+    
+    def modified(self) -> bool:
+        if not self._config_file:
+            return False
+
+        current_md5 = calculate_md5(self._config_file)
+        return current_md5 != self._last_md5
+    
+    def update_lock(self) -> None:
+        if not self._config_file:
+            return
+
+        if self.modified():
+            self._last_md5 = calculate_md5(self._config_file)
+            Path(self._lock_file).write_text(self._last_md5, encoding='utf-8')
     
 config = Config('config.json')

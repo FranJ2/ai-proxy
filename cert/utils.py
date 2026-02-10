@@ -1,8 +1,8 @@
 """
-证书工具：生成自签名证书、更新 hosts 文件等通用逻辑。
+证书工具：生成自签名证书、更新 hosts 文件等通用逻辑 
 
-此模块提供跨平台共享函数：`generate_self_signed_cert`、`generate_cert`、`configure_hosts`。
-使用时平台模块可以传入平台特有的 subject 字段（如 state/locality）。
+此模块提供跨平台共享函数：`generate_self_signed_cert`、`generate_cert`、`configure_hosts` 
+使用时平台模块可以传入平台特有的 subject 字段 (如 state/locality) 
 """
 import enum
 import os
@@ -32,9 +32,9 @@ def generate_self_signed_cert(
     locality: str = "Local",
     organization: str = "Local Dev",
 ):
-    """生成自签名证书并写入磁盘，返回包含路径的字典或抛出异常。
+    """生成自签名证书并写入磁盘，返回包含路径的字典或抛出异常 
 
-    使用时可以传入平台特有的 state/locality 等字段以保留平台差异。
+    使用时可以传入平台特有的 state/locality 等字段以保留平台差异 
     """
     if not hosts:
         hosts = ["localhost"]
@@ -89,7 +89,9 @@ def generate_self_signed_cert(
 
 
 def generate_cert(hosts: Optional[List[str]] = None, **kwargs):
-    """兼容调用点：返回generate_self_signed_cert的结果或None并记录错误。"""
+    """
+    返回generate_self_signed_cert的结果或None并记录错误 
+    """
     try:
         return generate_self_signed_cert(hosts or ["localhost"], **kwargs)
     except Exception:
@@ -98,7 +100,9 @@ def generate_cert(hosts: Optional[List[str]] = None, **kwargs):
 
 
 def configure_hosts(hosts: List[str], path: str) -> bool:
-    """将 hosts 添加到指定的 hosts 文件路径，返回 True/False。会创建备份文件 path.bak。"""
+    """
+    将 hosts 添加到指定的 hosts 文件路径，返回 True/False 会创建备份文件 path.bak
+    """
     try:
         if not os.path.exists(path):
             logger.debug("hosts 文件不存在: %s", path)
@@ -128,6 +132,40 @@ def configure_hosts(hosts: List[str], path: str) -> bool:
     except Exception:
         logger.exception("configure_hosts failed")
         return False
+    
+def remove_hosts(hosts: List[str], path: str) -> bool:
+    """
+    从指定的 hosts 文件路径中移除 hosts, 返回 True/False 会创建备份文件 path.bak
+    """
+    try:
+        if not os.path.exists(path):
+            logger.debug("hosts 文件不存在: %s", path)
+            return False
+        
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+
+        changed = False
+        for h in hosts:
+            entry = f"127.0.0.1 {h.strip()}\n"
+            if entry in lines:
+                lines.remove(entry)
+                changed = True
+
+        if changed:
+            backup = path + ".bak"
+            try:
+                shutil.copyfile(path, backup)
+            except Exception:
+                logger.debug("hosts backup failed", exc_info=True)
+
+            with open(path, "w", encoding="utf-8", errors="ignore") as f:
+                f.writelines(lines)
+
+        return True
+    except Exception:
+        logger.exception("remove_hosts failed")
+        return False
 
 class Platform(enum.Enum):
     WINDOWS = 'windows'
@@ -136,7 +174,7 @@ class Platform(enum.Enum):
     UNKNOWN = 'unknown'
 
 def detect_platform() -> Platform:
-    """返回平台标识：'windows'|'linux'|'darwin'|'unknown'。"""
+    """返回平台标识：'windows'|'linux'|'darwin'|'unknown' """
     sys = platform.system()
     if sys == 'Windows':
         return Platform.WINDOWS
@@ -147,5 +185,5 @@ def detect_platform() -> Platform:
     return Platform.UNKNOWN
 
 def has_command(cmd: str) -> bool:
-    """检查命令是否在 PATH 中可用。"""
+    """检查命令是否在 PATH 中可用 """
     return shutil.which(cmd) is not None
