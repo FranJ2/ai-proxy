@@ -45,7 +45,11 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --clean ai-proxy.spec
+          python -m PyInstaller --clean --distpath dist --workpath build ai-proxy.spec
+          echo "=== dist contents ==="
+          ls -la dist || true
+          echo "=== build contents ==="
+          ls -la build || true
         continue-on-error: false
 
       - name: Prepare artifact
