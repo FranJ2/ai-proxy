@@ -39,33 +39,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install --upgrade pip
+          python -c "import os; os.path.exists('requirements.txt') and __import__('subprocess').run(['pip', 'install', '-r', 'requirements.txt'], check=True)"
           pip install pyinstaller
-          echo "Installed packages:"
-          pip list
-
-      - name: Verify imports
-        run: |
-          python -c "import cert; import server; import clients; import routes; import config; print('[OK] All modules imported successfully')"
 
       - name: Build with PyInstaller
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Python version: $(python --version)"
-          echo "PyInstaller version: $(pyinstaller --version)"
-          echo "Files in working directory:"
-          ls -la
-
-          # Build with detailed analysis output
-          pyinstaller --clean --onefile \
-            --collect-all openai \
-            --collect-all cryptography \
-            ai-proxy.spec || (echo "Build failed" && exit 1)
-
-          echo ""
-          echo "Build output:"
-          ls -la dist/
+          pyinstaller --clean ai-proxy.spec
         continue-on-error: false
 
       - name: Prepare artifact
@@ -73,7 +53,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import os, shutil, sys, re, glob
+          import os, shutil, sys, re
 
           # Determine tag name
           tag = os.environ.get('TAG', 'unknown')
@@ -86,27 +66,18 @@ jobs:
           artifact = f"ai-proxy-{tag}-{name}.zip"
           src = None
 
-          # Find source directory (dist for --onefile, build for --onedir)
-          for directory in ['dist', 'build/ai-proxy']:
+          # Find source directory
+          for directory in ['dist', 'build']:
               if os.path.isdir(directory):
                   src = directory
-                  print(f"Found source directory: {directory}")
                   break
 
-          # Fallback: look for the executable directly
           if not src:
-              executables = glob.glob('dist/*') + glob.glob('build/**/*', recursive=True)
-              if executables:
-                  src = 'dist'
-                  print(f"Found dist directory with contents: {os.listdir('dist')}")
-              else:
-                  print('Error: No dist or build folder found', file=sys.stderr)
-                  print(f'Available directories: {os.listdir(".")}', file=sys.stderr)
-                  sys.exit(1)
+              print('Error: No dist or build folder found', file=sys.stderr)
+              sys.exit(1)
 
           # Create archive
           base_name = artifact.replace('.zip', '')
-          print(f"Creating archive from {src} -> {artifact}")
           shutil.make_archive(base_name, 'zip', src)
 
           if not os.path.exists(artifact):
