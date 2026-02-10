@@ -50,6 +50,7 @@ jobs:
 
       - name: Prepare artifact
         id: prepare_artifact
+        shell: bash
         run: |
           python - <<'PY'
           import os, shutil, sys, re
