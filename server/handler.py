@@ -78,12 +78,9 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         route, _ = match_route(chat_routes, path)
         if not route:
             return handle_404(self)
-        
-        bytes = self.rfile.read(int(self.headers["Content-Length"]))
-        json_data : Dict[str,Any] = json.loads(bytes)
-        
+
         # Call handler with request context
-        route.handler(json_data, self)
+        route.handler(self)
 
     def log_message(self, format: str, *args: Any) -> None:
         pass
