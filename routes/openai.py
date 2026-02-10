@@ -57,7 +57,7 @@ def handle(json_data : Dict[str,Any], request: http.server.BaseHTTPRequestHandle
         except Exception:
             pass
 
-def models(_,request: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
+def models(request: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
     return {
         "object": "list",
         "data": [
@@ -65,8 +65,16 @@ def models(_,request: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
                 "id": model_id,
                 "object": "model",
                 "created": 1677610602,
-                "owned_by": "openai",
+                "owned_by": "ai-proxy",
             }
             for model_id in config.config.models()
         ],
+    }
+
+def model(model_id: str, _: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
+    return {
+        "id": model_id,
+        "object": "model",
+        "created": 1677610602,
+        "owned_by": "ai-proxy",
     }

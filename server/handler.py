@@ -1,11 +1,11 @@
 import http.server
 import json
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple, TypeVar
 
 import config
 from routes import openai
-from routes.base_route import ChatRoute, ModelRoute
+from routes.base_route import BaseRoute, ChatRoute, ModelRoute
 
 chat_routes = [
     ChatRoute("/v1/chat/completions", openai.handle),
@@ -13,13 +13,9 @@ chat_routes = [
 ]
 
 model_routes = [
-    ModelRoute("/v1/models", openai.models),
-    ModelRoute("/models", openai.models),
+    ModelRoute("/v1/models", openai.models, openai.model),
+    ModelRoute("/models", openai.models, openai.model),
 ]
-
-route_map = {}
-for route in chat_routes + model_routes:
-    route_map[route.path] = route.handler
 
 def format_path(path: str) -> str:
     no_to_much_slash = re.sub(r"/+", "/", path)
@@ -32,6 +28,17 @@ def handle_404(request: http.server.BaseHTTPRequestHandler) -> None:
     request.end_headers()
     request.wfile.write(json.dumps({"error": "Not found"}).encode("utf-8"))
 
+route_type = TypeVar('route_type', bound=BaseRoute)
+
+def match_route(routes: list[route_type], path: str) -> Tuple[Optional[route_type], Optional[str]]:
+    for route in routes:
+        if path == route.path:
+            return route, None
+        elif path.startswith(route.path + "/") and len(path) > len(route.path) + 1:
+            return route, path[len(route.path) + 1:]
+    
+    return None, None
+
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         """
@@ -39,12 +46,18 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         For model routes, return models.
         """
         path = format_path(self.path)
-        
-        handler = route_map.get(path)
-        if not handler:
+
+        route, id = match_route(model_routes, path)
+
+        if not route:
             return handle_404(self)
-        
-        models = handler(self)
+
+        models = None
+        if id:
+            models = route.model_handler(id, self)
+        else:
+            models = route.list_handler(self)
+
         if not models:
             return handle_404(self)
         
@@ -62,15 +75,15 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         """
         path = format_path(self.path)
         
-        handler = route_map.get(path)
-        if not handler:
+        route, _ = match_route(chat_routes, path)
+        if not route:
             return handle_404(self)
         
         bytes = self.rfile.read(int(self.headers["Content-Length"]))
         json_data : Dict[str,Any] = json.loads(bytes)
         
         # Call handler with request context
-        handler(self, json_data)
+        route.handler(json_data, self)
 
     def log_message(self, format: str, *args: Any) -> None:
         pass
