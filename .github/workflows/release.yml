@@ -84,7 +84,7 @@ jobs:
               print(f'Error: Failed to create artifact {artifact}', file=sys.stderr)
               sys.exit(1)
 
-          print(f"✓ Created artifact: {artifact}")
+          print(f"[OK] Created artifact: {artifact}")
 
           # Write to GitHub output
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -93,6 +93,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name || github.event.inputs.tag || github.run_number }}
           MATRIX_NAME: ${{ matrix.name }}
+          PYTHONIOENCODING: utf-8
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
