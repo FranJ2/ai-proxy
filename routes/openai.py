@@ -43,7 +43,8 @@ def handle(json_data : Dict[str,Any], request: http.server.BaseHTTPRequestHandle
     try:
         # The SDK may return an iterable streaming response. Handle several possible chunk types.
         for chunk in response:
-            data_str = json.dumps(chunk)
+            chunk_dict = chunk.to_dict()
+            data_str = json.dumps(chunk_dict)
 
             # Send as Server-Sent Events `data: <json>\n\n` so clients can stream-parse easily.
             payload = f"data: {data_str}\n\n".encode("utf-8")
@@ -53,6 +54,13 @@ def handle(json_data : Dict[str,Any], request: http.server.BaseHTTPRequestHandle
         # On any streaming error, attempt to close the connection gracefully.
         try:
             request.wfile.write(b"data: {\"error\": \"streaming error\"}\n\n")
+            request.wfile.flush()
+        except Exception:
+            pass
+    finally:
+        # Send final sentinel so clients know stream is complete and flush.
+        try:
+            request.wfile.write(b"data: [DONE]\n\n")
             request.wfile.flush()
         except Exception:
             pass
