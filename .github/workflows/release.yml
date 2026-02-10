@@ -1,0 +1,112 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag for the release (optional when triggering manually)"
+        required: false
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: windows-latest
+            name: windows
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --clean ai-proxy.spec
+
+      - name: Prepare artifact
+        id: prepare_artifact
+        run: |
+          python - <<'PY'
+          import os, shutil, sys
+          tag = os.environ.get('TAG') or os.environ.get('GITHUB_REF_NAME') or os.environ.get('GITHUB_RUN_NUMBER') or 'run'
+          name = os.environ.get('MATRIX_NAME') or 'unknown'
+          art = f"ai-proxy-{tag}-{name}.zip"
+          src = None
+          if os.path.isdir('dist'):
+              src = 'dist'
+          elif os.path.isdir('build'):
+              src = 'build'
+          else:
+              print('No dist or build folder found', file=sys.stderr)
+              sys.exit(1)
+          shutil.make_archive(art.replace('.zip',''), 'zip', src)
+          print('artifact='+art)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f"artifact={art}\n")
+          PY
+        env:
+          TAG: ${{ github.ref_name || github.event.inputs.tag || github.run_number }}
+          MATRIX_NAME: ${{ matrix.name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare_artifact.outputs.artifact }}
+          path: ${{ steps.prepare_artifact.outputs.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name || github.event.inputs.tag }}
+          release_name: Release ${{ github.ref_name || github.event.inputs.tag }}
+          body: Automated release created by workflow
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install GitHub CLI
+        uses: cli/gh-action@v2
+
+      - name: Upload artifacts to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name || github.event.inputs.tag }}
+        run: |
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          ls -la artifacts
+          gh release upload "$TAG" artifacts/* --clobber

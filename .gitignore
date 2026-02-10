@@ -1,0 +1,11 @@
+__pycache__/
+build/
+dist/
+*.pyc
+
+cert.pem
+key.pem
+certificate.pfx
+
+.http
+config.json

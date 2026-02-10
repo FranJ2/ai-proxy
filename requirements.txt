@@ -1,0 +1,5 @@
+cryptography==46.0.4
+openai==2.18.0
+cffi==2.0.0
+pycparser==3.0
+pyinstaller==6.18.0
