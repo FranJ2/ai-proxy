@@ -1,6 +1,6 @@
 import http.server
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from clients.openai import OpenAIClient
 from openai.types.chat.chat_completion import ChatCompletion
@@ -71,7 +71,11 @@ def models(request: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
         ],
     }
 
-def model(model_id: str, _: http.server.BaseHTTPRequestHandler) -> Dict[str,Any]:
+def model(model_id: str, _: http.server.BaseHTTPRequestHandler) -> Optional[Dict[str,Any]]:
+    models = config.config.models()
+    if model_id not in models:
+        return None
+    
     return {
         "id": model_id,
         "object": "model",

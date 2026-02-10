@@ -1,6 +1,6 @@
 import http.server
 import json
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 class BaseRoute[K]:
     def __init__(self, path: str, handler: Callable[[http.server.BaseHTTPRequestHandler], K]) -> None:
@@ -19,7 +19,7 @@ class ChatRoute(BaseRoute[None]):
         super().__init__(path, wrapper)
 
 class ModelRoute(BaseRoute[Dict[str,Any]]):
-    def __init__(self, path: str, list_handler: Callable[[http.server.BaseHTTPRequestHandler], Dict[str,Any]], model_handler: Callable[[str,http.server.BaseHTTPRequestHandler], Dict[str,Any]]) -> None:
+    def __init__(self, path: str, list_handler: Callable[[http.server.BaseHTTPRequestHandler], Dict[str,Any]], model_handler: Callable[[str,http.server.BaseHTTPRequestHandler], Optional[Dict[str,Any]]]) -> None:
         self.list_handler = list_handler
         self.model_handler = model_handler
         super().__init__(path, list_handler)
