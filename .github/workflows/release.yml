@@ -30,6 +30,7 @@ jobs:
           python-version: "3.11"
 
       - name: Create virtual environment
+        shell: bash
         run: |
           python -m venv .venv
 
@@ -42,10 +43,11 @@ jobs:
             ${{ runner.os }}-venv-
 
       - name: Install dependencies
+        shell: bash
         run: |
           # Activate virtual environment based on OS
           if [ "${{ runner.os }}" = "Windows" ]; then
-            .venv\\Scripts\\activate
+            source .venv/Scripts/activate
           else
             source .venv/bin/activate
           fi
@@ -60,10 +62,11 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
+        shell: bash
         run: |
           # Activate virtual environment before building
           if [ "${{ runner.os }}" = "Windows" ]; then
-            .venv\\Scripts\\activate
+            source .venv/Scripts/activate
           else
             source .venv/bin/activate
           fi
@@ -75,7 +78,7 @@ jobs:
           # List current directory contents
           echo "=== Current directory ==="
           if [ "${{ runner.os }}" = "Windows" ]; then
-            dir
+            ls -la
           else
             ls -la
           fi
@@ -96,22 +99,14 @@ jobs:
           # Check build results
           echo "=== dist contents ==="
           if [ -d "dist" ]; then
-            if [ "${{ runner.os }}" = "Windows" ]; then
-              dir dist
-            else
-              ls -la dist
-            fi
+            ls -la dist
           else
             echo "dist directory not found"
           fi
 
           echo "=== build contents ==="
           if [ -d "build" ]; then
-            if [ "${{ runner.os }}" = "Windows" ]; then
-              dir build
-            else
-              ls -la build
-            fi
+            ls -la build
           else
             echo "build directory not found"
           fi
