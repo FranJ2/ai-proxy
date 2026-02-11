@@ -68,6 +68,10 @@ jobs:
             source .venv/bin/activate
           fi
 
+          # Verify virtual environment is active
+          which python
+          python --version
+
           # List current directory contents
           echo "=== Current directory ==="
           if [ "${{ runner.os }}" = "Windows" ]; then
@@ -78,28 +82,38 @@ jobs:
 
           # Check if spec file exists
           echo "=== Checking spec file ==="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            if exist ai-proxy.spec (echo "Found ai-proxy.spec") else (echo "ai-proxy.spec not found" && exit 1)
+          if [ -f "ai-proxy.spec" ]; then
+            echo "Found ai-proxy.spec"
           else
-            if [ -f "ai-proxy.spec" ]; then echo "Found ai-proxy.spec"; else echo "ai-proxy.spec not found" && exit 1; fi
+            echo "ai-proxy.spec not found"
+            exit 1
           fi
 
           # Build with PyInstaller
           echo "=== Building with PyInstaller ==="
-          pyinstaller --distpath dist --workpath build ai-proxy.spec
+          pyinstaller --clean --distpath dist --workpath build ai-proxy.spec
 
           # Check build results
           echo "=== dist contents ==="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            if exist dist (dir dist) else (echo "dist directory not found")
+          if [ -d "dist" ]; then
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              dir dist
+            else
+              ls -la dist
+            fi
           else
-            if [ -d "dist" ]; then ls -la dist; else echo "dist directory not found"; fi
+            echo "dist directory not found"
           fi
+
           echo "=== build contents ==="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            if exist build (dir build) else (echo "build directory not found")
+          if [ -d "build" ]; then
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              dir build
+            else
+              ls -la build
+            fi
           else
-            if [ -d "build" ]; then ls -la build; else echo "build directory not found"; fi
+            echo "build directory not found"
           fi
         continue-on-error: false
 
