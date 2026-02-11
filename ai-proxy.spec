@@ -12,7 +12,15 @@ a = Analysis(
     datas=[
         ('default.json', '.'),
     ],
-    hiddenimports=[],
+    hiddenimports=[
+        'config',
+        'cert.utils',
+        'cert.install',
+        'cert.windows',
+        'cert.linux',
+        'server.handler',
+        'server.server'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
