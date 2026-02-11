@@ -1,4 +1,5 @@
 # AI Proxy
+[English](https://github.com/FranJ2/ai-proxy/blob/main/README.md) | [简体中文](https://github.com/FranJ2/ai-proxy/blob/main/README_CN.md)
 
 一个基于 hosts 文件修改和内建 HTTPS 服务器的 AI 代理程序
 
