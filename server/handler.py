@@ -81,6 +81,3 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
 
         # Call handler with request context
         route.handler(self)
-
-    def log_message(self, format: str, *args: Any) -> None:
-        pass

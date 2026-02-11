@@ -1,3 +1,4 @@
+from typing import Tuple
 import cert.utils
 import config
 from server.handler import ProxyHandler
@@ -9,11 +10,18 @@ import cert.linux
 
 PORT = 443
 
-def configure_cert(cert_path: str, key_path: str):
-    generate_cert(config.config.hosts())
+def configure_cert(cert_path: str, key_path: str) -> Tuple[str, str]:
+    res = generate_cert(config.config.hosts())
+    if not res:
+        raise ValueError("generate cert failed")
+    
+    cert_path = res["cert"]
+    key_path = res["key"]
     
     if cert_path and key_path:
         install_certificate_auto(cert_path)
+
+        return cert_path, key_path
     else:
         raise ValueError("cert and key path must be provided")
 
@@ -40,7 +48,8 @@ if __name__ == "__main__":
     key_path = 'key.pem'
 
     if config.config.modified():
-        configure_cert(cert_path, key_path)
+        cert_path, key_path = configure_cert(cert_path, key_path)
+        config.config.update_lock()
     
     update_hosts()
 
