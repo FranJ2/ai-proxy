@@ -29,34 +29,85 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Cache pip
+      - name: Create virtual environment
+        run: |
+          python -m venv .venv
+
+      - name: Cache virtual environment
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt', '**/setup.py', '**/ai-proxy.spec') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-venv-
 
       - name: Install dependencies
         run: |
+          # Activate virtual environment based on OS
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            .venv\\Scripts\\activate
+          else
+            source .venv/bin/activate
+          fi
+
           python -m pip install --upgrade pip
-          python -c "import os; os.path.exists('requirements.txt') and __import__('subprocess').run(['pip', 'install', '-r', 'requirements.txt'], check=True)"
+
+          # Install project dependencies if requirements file exists
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          fi
+
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        shell: bash
         run: |
-          python -m PyInstaller --clean --distpath dist --workpath build ai-proxy.spec
+          # Activate virtual environment before building
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            .venv\\Scripts\\activate
+          else
+            source .venv/bin/activate
+          fi
+
+          # List current directory contents
+          echo "=== Current directory ==="
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            dir
+          else
+            ls -la
+          fi
+
+          # Check if spec file exists
+          echo "=== Checking spec file ==="
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            if exist ai-proxy.spec (echo "Found ai-proxy.spec") else (echo "ai-proxy.spec not found" && exit 1)
+          else
+            if [ -f "ai-proxy.spec" ]; then echo "Found ai-proxy.spec"; else echo "ai-proxy.spec not found" && exit 1; fi
+          fi
+
+          # Build with PyInstaller
+          echo "=== Building with PyInstaller ==="
+          pyinstaller --distpath dist --workpath build ai-proxy.spec
+
+          # Check build results
           echo "=== dist contents ==="
-          ls -la dist || true
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            if exist dist (dir dist) else (echo "dist directory not found")
+          else
+            if [ -d "dist" ]; then ls -la dist; else echo "dist directory not found"; fi
+          fi
           echo "=== build contents ==="
-          ls -la build || true
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            if exist build (dir build) else (echo "build directory not found")
+          else
+            if [ -d "build" ]; then ls -la build; else echo "build directory not found"; fi
+          fi
         continue-on-error: false
 
       - name: Prepare artifact
         id: prepare_artifact
         shell: bash
         run: |
+          # Use system Python for artifact preparation (not virtual environment)
           python - <<'PY'
           import os, shutil, sys, re
 
